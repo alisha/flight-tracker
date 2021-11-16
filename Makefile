@@ -6,3 +6,6 @@ all: test
 
 test:   clean
 	$(STACK) test
+
+run:
+	$(STACK) run
