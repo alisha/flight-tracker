@@ -3,8 +3,10 @@ module Main where
 import Control.Monad (when)
 import System.Exit (exitSuccess)
 import Text.Read (readMaybe)
+import Lib
 
 import Options.Applicative
+import Lib (runApplication)
 
 data Opts = Opts
   { optionalFlag :: Maybe Int
@@ -34,4 +36,4 @@ main = do
   putStrLn ("Thanks for playing")
 
 
-runApp = error "unimplemented"
+runApp = runApplication

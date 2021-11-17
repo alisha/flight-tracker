@@ -12,12 +12,18 @@ cabal-version:       >=1.10
 
 Library
   ghc-options:        -W
-  exposed-modules:    Lib
+  exposed-modules:    Lib, Requests
   Default-Extensions: OverloadedStrings
 
   -- other-extensions:
   build-depends:       base,
                        containers,
+                       bytestring,
+                       aeson,
+                       HTTP,
+                       req,
+                       text,
+                       time,
                        QuickCheck,
                        mtl
   hs-source-dirs:      src
