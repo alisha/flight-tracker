@@ -1,8 +1,13 @@
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 module Types (
   AirportCode (..),
   Airport,
-  Flight
+  Flight,
+  Arrival,
 ) where
+import Data.Aeson (FromJSON, ToJSON)
+import GHC.Generics
 
 
 -- Simply the ICAO codenames
@@ -46,3 +51,19 @@ data Flight = Flight
 
 instance Show Flight where
   show (Flight origin destination) = "flying " ++ show origin ++ " to " ++ show destination
+
+data Arrival = Arrival {
+  -- arrivalAirportCandidatesCount :: Int ,
+  callsign :: String,
+  -- departureAirportCandidatesCount :: Int,
+  estArrivalAirport :: String,
+  -- estArrivalAirportHorizDistance :: Int,
+  -- estArrivalAirportVertDistance :: Int,
+  estDepartureAirport :: Maybe String,
+  -- estDepartureAirportHorizDistance :: Int,
+  -- estDepartureAirportVertDistance :: Int,
+  -- firstSeen :: Int,
+  icao24 :: String
+  -- lastSeen :: Int
+} deriving (Eq, Show, Generic, ToJSON, FromJSON)
+
