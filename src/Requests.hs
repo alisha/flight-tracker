@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Requests (
-    printAPIRequest
+    printAPIRequest,
+    makeApiRequest
 ) where
 
 import Control.Monad.IO.Class
@@ -15,13 +16,9 @@ import Network.HTTP.Req
       responseBody,
       runReq,
       GET(GET),
-      NoReqBody(NoReqBody),
-      QueryParam(queryParam), (=:) )
-import Data.Text (Text)
-import qualified Data.ByteString.Char8 as B
-import Data.Semigroup (Option(Option))
-import Data.Time.Clock.POSIX ( getPOSIXTime )
-import Data.Time (NominalDiffTime)
+      NoReqBody(NoReqBody), (=:) )
+import Data.Text (Text, pack)
+import Types
 
 -- TODOs
 -- 1) Transform the below function to just make the API request, add functions
@@ -44,3 +41,16 @@ printAPIRequest = runReq defaultHttpConfig $ do
                 -- ("airport" =: ("SAN" :: Text))
                 ("airport" =: ("KSAN" :: Text) <> "begin" =: ("1637009571" :: Text) <> "end" =: ("1637180971" :: Text))
     liftIO $ print (responseBody resp :: Value)
+
+makeApiRequest :: AirportCode -> Integer -> Integer -> IO Array
+makeApiRequest code begin end = runReq defaultHttpConfig $ do
+    -- https://opensky-network.org/api/flights/arrival?airport=SAN&begin=1517227200&end=1517230800
+    let url = https "opensky-network.org" /: "api" /: "flights" /: "arrival"
+    -- let params = ("airport" =: ("SAN" :: Text)) <> "begin" =: ("1517227200" :: Text) <> "end" =: ("1517230800" :: Text)
+    resp <- req
+                GET
+                url
+                NoReqBody
+                jsonResponse
+                ("airport" =: (pack (show code) :: Text) <> "begin" =: (pack (show begin) :: Text) <> "end" =: (pack (show end) :: Text))
+    return $ responseBody resp

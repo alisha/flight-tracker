@@ -1,8 +1,8 @@
+module Lib
+  ( runApplication,
+  )
+where
 
-module Lib (
-  runApplication
-) where
-import Requests (printAPIRequest)
+import UI (ui)
 
-
-runApplication = do printAPIRequest
+runApplication = ui

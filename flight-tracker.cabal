@@ -12,20 +12,24 @@ cabal-version:       >=1.10
 
 Library
   ghc-options:        -W
-  exposed-modules:    Lib, Requests
+  exposed-modules:    Lib, Requests, UI, Types
   Default-Extensions: OverloadedStrings
 
   -- other-extensions:
-  build-depends:       base,
-                       containers,
+  build-depends:       aeson,
+                       base,
+                       brick,
                        bytestring,
-                       aeson,
+                       containers,
                        HTTP,
+                       microlens,
+                       mtl,
+                       QuickCheck,
                        req,
+                       template-haskell,
                        text,
                        time,
-                       QuickCheck,
-                       mtl
+                       vty
   hs-source-dirs:      src
   default-language:    Haskell2010
 
