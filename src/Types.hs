@@ -1,10 +1,10 @@
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass, DeriveGeneric, DuplicateRecordFields #-}
 module Types (
   AirportCode (..),
   Airport,
   Flight,
   Arrival,
+  Departure
 ) where
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics
@@ -67,3 +67,17 @@ data Arrival = Arrival {
   -- lastSeen :: Int
 } deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
+data Departure = Departure {
+  icao24 :: String,
+  firstSeen :: Int,
+  estDepartureAirport :: String,
+  lastSeen :: Int,
+  estArrivalAirport :: String,
+  callsign :: String,
+  estDepartureAirportHorizDistance :: Int,
+  estDepartureAirportVertDistance :: Int,
+  estArrivalAirportHorizDistance :: Int,
+  estArrivalAirportVertDistance :: Int,
+  departureAirportCandidatesCount :: Int,
+  arrivalAirportCandidatesCount :: Int
+} deriving (Eq, Show, Generic, ToJSON, FromJSON)

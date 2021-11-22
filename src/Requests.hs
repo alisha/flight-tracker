@@ -2,7 +2,8 @@
 
 module Requests (
     printAPIRequest,
-    makeArrivalsRequest
+    makeArrivalsRequest,
+    makeDeparturesRequest
 ) where
 
 import Control.Monad.IO.Class
@@ -45,6 +46,17 @@ printAPIRequest = runReq defaultHttpConfig $ do
 makeArrivalsRequest :: AirportCode -> Integer -> Integer -> IO [Arrival]
 makeArrivalsRequest code begin end = runReq defaultHttpConfig $ do
     let url = https "opensky-network.org" /: "api" /: "flights" /: "arrival"
+    resp <- req
+                GET
+                url
+                NoReqBody
+                jsonResponse
+                ("airport" =: (pack (show code) :: Text) <> "begin" =: (pack (show begin) :: Text) <> "end" =: (pack (show end) :: Text))
+    return $ responseBody resp
+
+makeDeparturesRequest :: AirportCode -> Integer -> Integer -> IO [Departure]
+makeDeparturesRequest code begin end = runReq defaultHttpConfig $ do
+    let url = https "opensky-network.org" /: "api" /: "flights" /: "departure"
     resp <- req
                 GET
                 url
