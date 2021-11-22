@@ -51,7 +51,7 @@ makeArrivalsRequest code begin end = runReq defaultHttpConfig $ do
                 url
                 NoReqBody
                 jsonResponse
-                ("airport" =: (pack (show code) :: Text) <> "begin" =: (pack (show begin) :: Text) <> "end" =: (pack (show end) :: Text))
+                ("airport" =: pack (show code) <> "begin" =: pack (show begin) <> "end" =: pack (show end))
     return $ responseBody resp
 
 makeDeparturesRequest :: AirportCode -> Integer -> Integer -> IO [Departure]
@@ -62,5 +62,5 @@ makeDeparturesRequest code begin end = runReq defaultHttpConfig $ do
                 url
                 NoReqBody
                 jsonResponse
-                ("airport" =: (pack (show code) :: Text) <> "begin" =: (pack (show begin) :: Text) <> "end" =: (pack (show end) :: Text))
+                ("airport" =: pack (show code) <> "begin" =: pack (show begin) <> "end" =: pack (show end))
     return $ responseBody resp
