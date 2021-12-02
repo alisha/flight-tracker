@@ -21,10 +21,17 @@ import Brick.Focus
 import qualified Brick.Widgets.Edit as E
 import qualified Brick.Widgets.Border as B
 import qualified Brick.Widgets.Center as C
+import qualified Brick.Widgets.List as L
+import qualified Brick.Widgets.Table as BT
+
+import qualified Data.Vector as Vec
+import qualified Data.Text as T
+
 import Brick
 import Data.Time.Clock
 import Requests
 import Types
+import qualified USA as U
 
 data ArrivalsFields = AirportField | BeginField | EndField
   deriving(Eq, Ord, Show)
@@ -37,6 +44,20 @@ data ArrivalsInput = ArrivalsInput {
   _begin :: BeginTime,
   _end :: EndTime
 } deriving Show
+
+data ResourceNames = Arrivals | Departures | Map
+  deriving (Eq, Ord, Show)
+
+data AppState = AppState {
+  -- brick-specific items
+  _focusRing :: FocusRing ResourceNames,
+
+  -- application-specific items
+  _arrivalsData :: [Arrival],
+  _departuresData :: [Departure],
+  _brickArrivalsData :: L.List ResourceNames Arrivals,
+  _brickDeparturesData :: L.List ResourceNames Departures
+}
 
 -- These are magic functions needed in the "arrivalsForm" function
 airport :: Lens' ArrivalsInput AirportCode
@@ -62,6 +83,90 @@ draw f = [C.vCenter $ C.hCenter form <=> C.hCenter help]
     form = B.border $ padTop (Pad 1) $ hLimit 50 $ renderForm f
     help = padTop (Pad 1) $ B.borderWithLabel (str "Help") body
     body = str "ICAO airport code and begin/end epoch times in seconds"
+
+parseArrivalData :: Arrival -> String
+parseArrivalData a =
+  (show (estDepartureAirport a)) ++ " to " ++ (show (estArrivalAirport a))
+  -- ++ ". Departure Time: ")
+
+parseDepartureData :: Departure -> String
+parseDepartureData d =
+  (show (estDepartureAirport d)) ++ " to " ++ (show (estDepartureAirport d))
+
+-- renders a mercator projection with the origin and destination
+-- coordinates highlighted on the ASCII mercator map 
+-- renderMercator :: Flight -> Flight -> String
+-- renderMercator = 
+
+-- converts a lat-lon coordinate to an (x, y) coordinate pair on a map
+
+-- latitude    = 41.145556; // (φ)
+-- longitude   = -73.995;   // (λ)
+
+-- mapWidth    = 200;
+-- mapHeight   = 100;
+
+-- // get x value
+-- x = (longitude+180)*(mapWidth/360)
+
+-- // convert from degrees to radians
+-- latRad = latitude*PI/180;
+
+-- // get y value
+-- mercN = ln(tan((PI/4)+(latRad/2)));
+-- y     = (mapHeight/2)-(mapWidth*mercN/(2*PI));
+renderMercatorCoords :: (Double, Double) -> String -> String
+renderMercatorCoords (lat, lon) = replaceCharAtIndex calculatedIdx 'X' U.mercatorMap
+  where
+    (x, y) = convertCoordinatesToMapLocation (lat, lon)
+    calculatedIdx = (y * (U.mapWidth + 1)) + x 
+
+
+convertCoordinateToTotalMapLocation :: (Double, Double) -> (Double, Double)
+convertCoordinateToTotalMapLocation (lat, lon) = (x, y)
+  where
+    x = (lon + 180) * (U.mercatorMapTotalWidth / 360)
+    y = (U.mercatorMapTotalHeight / 2) - (U.mercatorMapTotalWidth * mercN / (2 * pi))
+    mercN = log tan((pi / 4) + (latRad / 2))
+    latRad = lat * pi / 180
+    mapWidth = U.mercatorMapTotalWidth
+    mapHeight = U.mercatorMapTotalHeight
+
+convertCoordinateToMapLocation :: (Double, Double) -> (Double, Double)
+convertCoordinateToTotalMapLocation (lat, lon) = (x, y)
+  where
+    (xTot, yTot) = convertCoordinateToTotalMapLocation (lat, lon)
+    x = xTot - U.mercatorMapOriginWidth
+    y = yTot - U.mercatorMapOriginHeight
+
+-- replace a character at a particualr index
+replaceCharAtIndex :: Int -> Char -> String -> String
+replaceCharAtIndex index replacement str = strHead ++ [replacement] ++ drop 1 strAfter
+  where (strHead, strAfter) = splitAt index str
+
+
+drawResults :: AppState -> [Widget ResourceNames]
+drawResults f =
+  case focusGetCurrent (_focusRing f) of
+    Just Arrivals -> [mainScreen]
+    Just Departures -> [mainScreen]
+    Nothing -> [mainScreen]
+    Just Map -> [mainScreen]
+    where
+      arrivals = borderWithLabel
+        (str $ show "Arrivals")
+        $ L.renderList
+          (\_ t -> str (T.unpack t))
+          (focusGetCurrent (_focusRing f) == Just Arrivals)
+          (L.list Arrivals (Vec.fromList (map (T.pack . parseArrivalData) (_arrivalsData f))) 1)
+      departures = borderWithLabel
+        (str $ show "Departures")
+        $ L.renderList
+          (\_ t -> str (T.unpack t))
+          (focusGetCurrent (_focusRing f) == Just Departures)
+          (L.list Departures (Vec.fromList (map (T.pack . parseDepartureData) (_departuresData f))) 1)
+      aircraftScreen = C.center $ str U.mercatorMap
+      mainScreen = hBox [vBox [arrivals, departures], B.vBorder, aircraftScreen]
 
 -- special attribute map...not yet fully understood
 theMap :: AttrMap
@@ -97,6 +202,29 @@ app =
         , appAttrMap = const theMap
         }
 
+-- TODO: when a given flight is selected, display info about it
+renderFlightInfo :: State -> V.Event -> EventM n (Next State)
+renderFlightInfo s =
+  case L.listSelectedElement (s ^. _brickDeparturesData) of
+    Just (_, departure) -> do
+      let dstAirportMark = renderMercatorCoords (estDepartureAirportHorizDistance departure) (estDepartureAirportVertDistance departure)
+    _ -> continue s
+
+-- TODO: improve this
+resultsApp :: App AppState e ResourceNames
+resultsApp =
+  App { appDraw = drawResults,
+        appHandleEvent = \s ev ->
+          case ev of
+            VtyEvent (V.EvKey V.KEnter []) -> renderFlightInfo s
+            VtyEvent (V.EvKey V.KEsc [])   -> halt s
+            VtyEvent (V.EvKey (V.KChar 'q') [])   -> halt s
+            _ -> continue s
+        appChooseCursor = focusRingCursor _focusRing,
+        appStartEvent = return,
+        appAttrMap = const theMap
+  }
+
 -- actual main routine to start the app
 ui :: IO ()
 ui = do
@@ -121,22 +249,27 @@ ui = do
   f' <- customMain initialVty buildVty Nothing app f
 
   -- after exiting, we'll get to this part where we print the output of the app
-  putStrLn "The starting form state was:"
-  print defaultArrivals
+  -- putStrLn "The starting form state was:"
+  -- print defaultArrivals
 
   -- print final form parameters and make the API request and print its response
-  putStrLn "The final form state was:"
+  -- putStrLn "The final form state was:"
   let params = formState f'
-  print $ params
-  x <- makeArrivalsRequest (_airport params) (_begin params) (_end params)
-  print $ x
+  -- print $ params
+  
+  arrivals <- makeArrivalsRequest (_airport params) (_begin params) (_end params)
+  departures <- makeDeparturesRequest (_airport params) (_begin params) (_end params)
+  let appState = AppState {
+    _focusRing = focusRing [Arrivals],
+    _arrivalsData = arrivals,
+    _brickArrivalsData = L.List ResourceNames arrivals,
+    _departuresData = departures,
+    _brickDeparturesData = L.List ResourceNames departures
+  }
 
-
-  -- if allFieldsValid f'
-  --     then putStrLn "The final form inputs were valid."
-  --     else putStrLn $ "The final form had invalid inputs: " <> show (invalidFields f')
-  -- putStrLn $ "The final form had invalid inputs: " <> show f'
-
+  initialVty <- buildVty
+  _ <- customMain initialVty buildVty Nothing resultsApp appState 
+  putStrLn "Thanks for playing!"
 
 
 
