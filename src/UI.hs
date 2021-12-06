@@ -35,6 +35,7 @@ import qualified Arrival as A
 import qualified Departure as D
 import qualified USA as U
 import Control.Monad.Cont (MonadIO(liftIO))
+import qualified Data.Maybe
 
 data ArrivalsFields = AirportField | BeginField | EndField
   deriving(Eq, Ord, Show)
@@ -88,9 +89,7 @@ draw f = [C.vCenter $ C.hCenter form <=> C.hCenter help]
     body = str "ICAO airport code and begin/end epoch times in seconds"
 
 showAirportCode :: Maybe String -> String
-showAirportCode s = case s of
-  Just code -> code
-  Nothing   -> "????"
+showAirportCode = Data.Maybe.fromMaybe "????"
 
 parseArrivalData :: A.Arrival -> String
 parseArrivalData a =
@@ -99,7 +98,7 @@ parseArrivalData a =
 
 parseDepartureData :: D.Departure -> String
 parseDepartureData d =
-  showAirportCode (D.estArrivalAirport d) ++ " to " ++ showAirportCode (D.estDepartureAirport d)
+  showAirportCode (D.estDepartureAirport d) ++ " to " ++ showAirportCode (D.estArrivalAirport d)
 
 -- renders a mercator projection with the origin and destination
 -- coordinates highlighted on the ASCII mercator map
@@ -183,6 +182,9 @@ theMap = attrMap V.defAttr
   , (E.editFocusedAttr, V.black `on` V.yellow)
   , (invalidFormInputAttr, V.white `on` V.red)
   , (focusedFormInputAttr, V.black `on` V.yellow)
+  , (L.listAttr, V.white `on` V.black)
+  , (L.listSelectedAttr, V.black `on` V.brightBlack)
+  , (L.listSelectedFocusedAttr, V.black `on` V.white)
   ]
 
 -- application function defines event handlers, forms, fields, etc
