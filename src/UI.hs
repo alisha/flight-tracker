@@ -34,6 +34,7 @@ import Types
 import qualified Arrival as A
 import qualified Departure as D
 import qualified USA as U
+import Control.Monad.Cont (MonadIO(liftIO))
 
 data ArrivalsFields = AirportField | BeginField | EndField
   deriving(Eq, Ord, Show)
@@ -204,18 +205,17 @@ app =
         , appAttrMap = const theMap
         }
 
-renderFlightInfo :: AppState -> V.Event -> EventM n (Next AppState)
+renderFlightInfo :: AppState -> EventM n (Next AppState)
 renderFlightInfo s =
-  case L.listSelectedElement (s ^. _brickDeparturesData) of
+  case L.listSelectedElement (_brickDeparturesData s) of
     Just (_, departure) -> do
       -- Make API request for aircraft tracking
-      let a = makeAircraftTrackRequest (D.icao24 a) 0
-      let waypoints = AircraftTrackResponse.path a
-      let latestWaypoint = if length waypoints == 1 then waypoints !! 0
-      
-      -- let x = renderMercatorCoords (D.estDepartureAirportHorizDistance departure, D.estDepartureAirportVertDistance departure)
-      let x = renderMercatorCoords (latitude latestWaypoint, longitude latestWaypoint)
+      tracked <- liftIO $ makeAircraftTrackRequest (D.icao24 departure) 0
+      let waypoints = path tracked
       continue s
+      -- let latestWaypoint = if length waypoints == 1 then waypoints !! 0
+      -- let x = renderMercatorCoords (D.estDepartureAirportHorizDistance departure, D.estDepartureAirportVertDistance departure)
+      -- let x = renderMercatorCoords (latitude latestWaypoint, longitude latestWaypoint)
     _ -> continue s
 
 -- TODO: improve this
