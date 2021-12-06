@@ -12,7 +12,7 @@ import Brick.Widgets.Border.Style (unicode)
 import Brick.Widgets.Center (center)
 import Brick.Forms
 import Brick.Widgets.Core
-import Lens.Micro (Lens', lens)
+import Lens.Micro (Lens', lens, (^.))
 import Data.Time.Clock.POSIX
 import Brick.Main
 import Brick.Types
@@ -96,9 +96,9 @@ parseDepartureData d =
   (show (D.estDepartureAirport)) ++ " to " ++ (show (D.estDepartureAirport))
 
 -- renders a mercator projection with the origin and destination
--- coordinates highlighted on the ASCII mercator map 
+-- coordinates highlighted on the ASCII mercator map
 -- renderMercator :: Flight -> Flight -> String
--- renderMercator = 
+-- renderMercator =
 
 -- converts a lat-lon coordinate to an (x, y) coordinate pair on a map
 
@@ -122,7 +122,7 @@ renderMercatorCoords (lat, lon) map = replaceCharAtIndex calculatedIdx 'X' map
   where
     (x, y) = convertCoordinateToMapLocation (lat, lon)
     calculatedIdx :: Int
-    calculatedIdx =  fromIntegral (toInteger (y * (U.mapCharWidth + 1.0)) + x) 1
+    calculatedIdx =  fromIntegral (toInteger (y * fromIntegral (U.mapCharWidth + 1)) + fromIntegral x) 1
 
 convertCoordinateToTotalMapLocation :: (Double, Double) -> (Double, Double)
 convertCoordinateToTotalMapLocation (lat, lon) = (x, y)
@@ -267,7 +267,7 @@ ui = do
   -- putStrLn "The final form state was:"
   let params = formState f'
   -- print $ params
-  
+
   arrivals <- makeArrivalsRequest (_airport params) (_begin params) (_end params)
   departures <- makeDeparturesRequest (_airport params) (_begin params) (_end params)
   let appState = AppState {
@@ -279,7 +279,7 @@ ui = do
   }
 
   initialVty <- buildVty
-  _ <- customMain initialVty buildVty Nothing resultsApp appState 
+  _ <- customMain initialVty buildVty Nothing resultsApp appState
   putStrLn "Thanks for playing!"
 
 

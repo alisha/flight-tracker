@@ -3,7 +3,7 @@ module Types (
   AirportCode (..),
   Airport,
   Flight,
-  AircraftTrackResponse,
+  AircraftTrackResponse (..),
   Waypoint,
 ) where
 import Data.Aeson (FromJSON, ToJSON)

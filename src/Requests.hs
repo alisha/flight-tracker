@@ -68,7 +68,7 @@ makeDeparturesRequest code begin end = runReq defaultHttpConfig $ do
                 ("airport" =: pack (show code) <> "begin" =: pack (show begin) <> "end" =: pack (show end))
     return $ responseBody resp
 
-makeAircraftTrackRequest :: AirportCode -> Integer -> IO [AircraftTrackResponse]
+makeAircraftTrackRequest :: AirportCode -> Integer -> IO AircraftTrackResponse
 makeAircraftTrackRequest code time = runReq defaultHttpConfig $ do
     let url = https "opensky-network.org" /: "api" /: "track"
     resp <- req
