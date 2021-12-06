@@ -12,7 +12,7 @@ data Arrival = Arrival {
   -- arrivalAirportCandidatesCount :: Int ,
   callsign :: String,
   -- departureAirportCandidatesCount :: Int,
-  estArrivalAirport :: String,
+  estArrivalAirport :: Maybe String,
   -- estArrivalAirportHorizDistance :: Int,
   -- estArrivalAirportVertDistance :: Int,
   estDepartureAirport :: Maybe String,

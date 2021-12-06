@@ -8,9 +8,9 @@ import GHC.Generics
 data Departure = Departure {
   icao24 :: String,
   firstSeen :: Int,
-  estDepartureAirport :: String,
+  estDepartureAirport :: Maybe String,
   lastSeen :: Int,
-  estArrivalAirport :: String,
+  estArrivalAirport :: Maybe String,
   callsign :: String,
   estDepartureAirportHorizDistance :: Int,
   estDepartureAirportVertDistance :: Int,
