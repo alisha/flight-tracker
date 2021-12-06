@@ -3,7 +3,8 @@
 module Requests (
     printAPIRequest,
     makeArrivalsRequest,
-    makeDeparturesRequest
+    makeDeparturesRequest,
+    makeAircraftTrackRequest
 ) where
 
 import Control.Monad.IO.Class
@@ -20,6 +21,8 @@ import Network.HTTP.Req
       NoReqBody(NoReqBody), (=:) )
 import Data.Text (Text, pack)
 import Types
+import qualified Arrival as A
+import qualified Departure as D
 
 -- TODOs
 -- 1) Transform the below function to just make the API request, add functions
@@ -43,7 +46,7 @@ printAPIRequest = runReq defaultHttpConfig $ do
                 ("airport" =: ("KSAN" :: Text) <> "begin" =: ("1637009571" :: Text) <> "end" =: ("1637180971" :: Text))
     liftIO $ print (responseBody resp :: Value)
 
-makeArrivalsRequest :: AirportCode -> Integer -> Integer -> IO [Arrival]
+makeArrivalsRequest :: AirportCode -> Integer -> Integer -> IO [A.Arrival]
 makeArrivalsRequest code begin end = runReq defaultHttpConfig $ do
     let url = https "opensky-network.org" /: "api" /: "flights" /: "arrival"
     resp <- req
@@ -54,7 +57,7 @@ makeArrivalsRequest code begin end = runReq defaultHttpConfig $ do
                 ("airport" =: pack (show code) <> "begin" =: pack (show begin) <> "end" =: pack (show end))
     return $ responseBody resp
 
-makeDeparturesRequest :: AirportCode -> Integer -> Integer -> IO [Departure]
+makeDeparturesRequest :: AirportCode -> Integer -> Integer -> IO [D.Departure]
 makeDeparturesRequest code begin end = runReq defaultHttpConfig $ do
     let url = https "opensky-network.org" /: "api" /: "flights" /: "departure"
     resp <- req
@@ -63,4 +66,15 @@ makeDeparturesRequest code begin end = runReq defaultHttpConfig $ do
                 NoReqBody
                 jsonResponse
                 ("airport" =: pack (show code) <> "begin" =: pack (show begin) <> "end" =: pack (show end))
+    return $ responseBody resp
+
+makeAircraftTrackRequest :: AirportCode -> Integer -> IO [AircraftTrackResponse]
+makeAircraftTrackRequest code time = runReq defaultHttpConfig $ do
+    let url = https "opensky-network.org" /: "api" /: "track"
+    resp <- req
+                GET
+                url
+                NoReqBody
+                jsonResponse
+                ("icao24" =: pack (show code) <> "time" =: pack (show time))
     return $ responseBody resp

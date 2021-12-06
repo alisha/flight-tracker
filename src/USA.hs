@@ -5,8 +5,8 @@ module USA (
   mercatorMapTotalHeight,
   mercatorMapOriginWidth,
   mercatorMapOriginHeight,
-  mapWidth,
-  mapHeight
+  mapCharWidth,
+  mapCharHeight
 )
 where
 
@@ -19,8 +19,10 @@ mercatorMapOriginWidth = 125
 mercatorMapOriginHeight :: Double
 mercatorMapOriginHeight = 120
 
-mapWidth = 119
-mapHeight = 29
+mapCharWidth :: Int
+mapCharWidth = 119
+mapCharHeight :: Int
+mapCharHeight = 29
 
 
 -- 119 x 29

@@ -31,6 +31,8 @@ import Brick
 import Data.Time.Clock
 import Requests
 import Types
+import qualified Arrival as A
+import qualified Departure as D
 import qualified USA as U
 
 data ArrivalsFields = AirportField | BeginField | EndField
@@ -53,10 +55,10 @@ data AppState = AppState {
   _focusRing :: FocusRing ResourceNames,
 
   -- application-specific items
-  _arrivalsData :: [Arrival],
-  _departuresData :: [Departure],
-  _brickArrivalsData :: L.List ResourceNames Arrivals,
-  _brickDeparturesData :: L.List ResourceNames Departures
+  _arrivalsData :: [A.Arrival],
+  _departuresData :: [D.Departure],
+  _brickArrivalsData :: L.List ResourceNames A.Arrival,
+  _brickDeparturesData :: L.List ResourceNames D.Departure
 }
 
 -- These are magic functions needed in the "arrivalsForm" function
@@ -84,14 +86,14 @@ draw f = [C.vCenter $ C.hCenter form <=> C.hCenter help]
     help = padTop (Pad 1) $ B.borderWithLabel (str "Help") body
     body = str "ICAO airport code and begin/end epoch times in seconds"
 
-parseArrivalData :: Arrival -> String
+parseArrivalData :: A.Arrival -> String
 parseArrivalData a =
-  (show (estDepartureAirport a)) ++ " to " ++ (show (estArrivalAirport a))
+  (show (A.estDepartureAirport)) ++ " to " ++ (show (A.estArrivalAirport))
   -- ++ ". Departure Time: ")
 
-parseDepartureData :: Departure -> String
+parseDepartureData :: D.Departure -> String
 parseDepartureData d =
-  (show (estDepartureAirport d)) ++ " to " ++ (show (estDepartureAirport d))
+  (show (D.estDepartureAirport)) ++ " to " ++ (show (D.estDepartureAirport))
 
 -- renders a mercator projection with the origin and destination
 -- coordinates highlighted on the ASCII mercator map 
@@ -116,11 +118,11 @@ parseDepartureData d =
 -- mercN = ln(tan((PI/4)+(latRad/2)));
 -- y     = (mapHeight/2)-(mapWidth*mercN/(2*PI));
 renderMercatorCoords :: (Double, Double) -> String -> String
-renderMercatorCoords (lat, lon) = replaceCharAtIndex calculatedIdx 'X' U.mercatorMap
+renderMercatorCoords (lat, lon) map = replaceCharAtIndex calculatedIdx 'X' map
   where
-    (x, y) = convertCoordinatesToMapLocation (lat, lon)
-    calculatedIdx = (y * (U.mapWidth + 1)) + x 
-
+    (x, y) = convertCoordinateToMapLocation (lat, lon)
+    calculatedIdx :: Int
+    calculatedIdx =  fromIntegral (toInteger (y * (U.mapCharWidth + 1.0)) + x) 1
 
 convertCoordinateToTotalMapLocation :: (Double, Double) -> (Double, Double)
 convertCoordinateToTotalMapLocation (lat, lon) = (x, y)
@@ -133,7 +135,7 @@ convertCoordinateToTotalMapLocation (lat, lon) = (x, y)
     mapHeight = U.mercatorMapTotalHeight
 
 convertCoordinateToMapLocation :: (Double, Double) -> (Double, Double)
-convertCoordinateToTotalMapLocation (lat, lon) = (x, y)
+convertCoordinateToMapLocation (lat, lon) = (x, y)
   where
     (xTot, yTot) = convertCoordinateToTotalMapLocation (lat, lon)
     x = xTot - U.mercatorMapOriginWidth
@@ -202,15 +204,23 @@ app =
         , appAttrMap = const theMap
         }
 
--- TODO: when a given flight is selected, display info about it
-renderFlightInfo :: State -> V.Event -> EventM n (Next State)
+renderFlightInfo :: AppState -> V.Event -> EventM n (Next AppState)
 renderFlightInfo s =
   case L.listSelectedElement (s ^. _brickDeparturesData) of
     Just (_, departure) -> do
-      let dstAirportMark = renderMercatorCoords (estDepartureAirportHorizDistance departure) (estDepartureAirportVertDistance departure)
+      -- Make API request for aircraft tracking
+      let a = makeAircraftTrackRequest (D.icao24 a) 0
+      let waypoints = AircraftTrackResponse.path a
+      let latestWaypoint = if length waypoints == 1 then waypoints !! 0
+      
+      -- let x = renderMercatorCoords (D.estDepartureAirportHorizDistance departure, D.estDepartureAirportVertDistance departure)
+      let x = renderMercatorCoords (latitude latestWaypoint, longitude latestWaypoint)
+      continue s
     _ -> continue s
 
 -- TODO: improve this
+-- Can add focus case so that you only render flight info when in the arrivals/
+-- departure windows
 resultsApp :: App AppState e ResourceNames
 resultsApp =
   App { appDraw = drawResults,
@@ -220,7 +230,8 @@ resultsApp =
             VtyEvent (V.EvKey V.KEsc [])   -> halt s
             VtyEvent (V.EvKey (V.KChar 'q') [])   -> halt s
             _ -> continue s
-        appChooseCursor = focusRingCursor _focusRing,
+          -- where focus = F.focusGetCurrent (s ^. focusRing)
+        , appChooseCursor = focusRingCursor _focusRing,
         appStartEvent = return,
         appAttrMap = const theMap
   }
@@ -262,9 +273,9 @@ ui = do
   let appState = AppState {
     _focusRing = focusRing [Arrivals],
     _arrivalsData = arrivals,
-    _brickArrivalsData = L.List ResourceNames arrivals,
+    _brickArrivalsData = L.list Arrivals (Vec.fromList arrivals) 1,
     _departuresData = departures,
-    _brickDeparturesData = L.List ResourceNames departures
+    _brickDeparturesData = L.list Departures (Vec.fromList departures) 1
   }
 
   initialVty <- buildVty

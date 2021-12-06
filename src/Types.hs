@@ -3,8 +3,8 @@ module Types (
   AirportCode (..),
   Airport,
   Flight,
-  Arrival,
-  Departure
+  AircraftTrackResponse,
+  Waypoint,
 ) where
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics
@@ -52,32 +52,21 @@ data Flight = Flight
 instance Show Flight where
   show (Flight origin destination) = "flying " ++ show origin ++ " to " ++ show destination
 
-data Arrival = Arrival {
-  -- arrivalAirportCandidatesCount :: Int ,
-  callsign :: String,
-  -- departureAirportCandidatesCount :: Int,
-  estArrivalAirport :: String,
-  -- estArrivalAirportHorizDistance :: Int,
-  -- estArrivalAirportVertDistance :: Int,
-  estDepartureAirport :: Maybe String,
-  -- estDepartureAirportHorizDistance :: Int,
-  -- estDepartureAirportVertDistance :: Int,
-  -- firstSeen :: Int,
-  icao24 :: String
-  -- lastSeen :: Int
-} deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
-data Departure = Departure {
-  icao24 :: String,
-  firstSeen :: Int,
-  estDepartureAirport :: String,
-  lastSeen :: Int,
-  estArrivalAirport :: String,
-  callsign :: String,
-  estDepartureAirportHorizDistance :: Int,
-  estDepartureAirportVertDistance :: Int,
-  estArrivalAirportHorizDistance :: Int,
-  estArrivalAirportVertDistance :: Int,
-  departureAirportCandidatesCount :: Int,
-  arrivalAirportCandidatesCount :: Int
-} deriving (Eq, Show, Generic, ToJSON, FromJSON)
+data AircraftTrackResponse = AircraftTrackResponse
+  {
+    icao24 :: String,
+    startTime :: Integer,
+    endTime :: Integer,
+    callsign :: String,
+    path :: [Waypoint]
+  } deriving (Eq, Show, Generic, ToJSON, FromJSON)
+
+data Waypoint = Waypoint
+  { time :: Integer,
+    latitude :: Float,
+    longitude :: Float,
+    baro_altitude :: Float,
+    true_track :: Float,
+    on_ground :: Bool
+  } deriving (Eq, Show, Generic, ToJSON, FromJSON)
