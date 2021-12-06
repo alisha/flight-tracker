@@ -242,7 +242,7 @@ ui = do
   -- default begin/end params
   now <- round `fmap` getPOSIXTime :: IO Integer
   let daySeconds = round nominalDay :: Integer
-  let beginTime = now - daySeconds
+  let beginTime = now - (daySeconds + fromIntegral (daySeconds `div` 2))
   -- need a default set of params
   let defaultArrivals = ArrivalsInput { _airport = KSAN, _begin = beginTime, _end = now  }
   -- idk....
@@ -253,7 +253,6 @@ ui = do
 
   -- arrivals form instance with defaults
   let f = arrivalsForm defaultArrivals
-
   initialVty <- buildVty
 
   -- this is where the UI is run and rendered
@@ -268,7 +267,9 @@ ui = do
   let params = formState f'
   -- print $ params
 
+  putStrLn "making arrivals request"
   arrivals <- makeArrivalsRequest (_airport params) (_begin params) (_end params)
+  putStrLn "making departures request"
   departures <- makeDeparturesRequest (_airport params) (_begin params) (_end params)
   let appState = AppState {
     _focusRing = focusRing [Arrivals],
@@ -277,8 +278,10 @@ ui = do
     _departuresData = departures,
     _brickDeparturesData = L.list Departures (Vec.fromList departures) 1
   }
+  putStrLn "created app state"
 
   initialVty <- buildVty
+  putStrLn "created initial vty"
   _ <- customMain initialVty buildVty Nothing resultsApp appState
   putStrLn "Thanks for playing!"
 
