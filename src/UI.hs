@@ -89,12 +89,12 @@ draw f = [C.vCenter $ C.hCenter form <=> C.hCenter help]
 
 parseArrivalData :: A.Arrival -> String
 parseArrivalData a =
-  (show (A.estDepartureAirport)) ++ " to " ++ (show (A.estArrivalAirport))
+  show (A.estDepartureAirport a) ++ " to " ++ show (A.estArrivalAirport a)
   -- ++ ". Departure Time: ")
 
 parseDepartureData :: D.Departure -> String
 parseDepartureData d =
-  (show (D.estDepartureAirport)) ++ " to " ++ (show (D.estDepartureAirport))
+  show (D.estDepartureAirport d) ++ " to " ++ show (D.estDepartureAirport d)
 
 -- renders a mercator projection with the origin and destination
 -- coordinates highlighted on the ASCII mercator map
@@ -123,7 +123,7 @@ renderMercatorCoords (lat, lon) map = replaceCharAtIndex calculatedIdx 'X' map
   where
     (x, y) = convertCoordinateToMapLocation (lat, lon)
     calculatedIdx :: Int
-    calculatedIdx =  fromIntegral (toInteger (y * fromIntegral (U.mapCharWidth + 1)) + fromIntegral x) 1
+    calculatedIdx =  floor ((y * fromIntegral (U.mapCharWidth + 1)) + x)
 
 convertCoordinateToTotalMapLocation :: (Double, Double) -> (Double, Double)
 convertCoordinateToTotalMapLocation (lat, lon) = (x, y)
