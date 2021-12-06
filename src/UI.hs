@@ -87,14 +87,19 @@ draw f = [C.vCenter $ C.hCenter form <=> C.hCenter help]
     help = padTop (Pad 1) $ B.borderWithLabel (str "Help") body
     body = str "ICAO airport code and begin/end epoch times in seconds"
 
+showAirportCode :: Maybe String -> String
+showAirportCode s = case s of
+  Just code -> code
+  Nothing   -> "????"
+
 parseArrivalData :: A.Arrival -> String
 parseArrivalData a =
-  show (A.estDepartureAirport a) ++ " to " ++ show (A.estArrivalAirport a)
+  showAirportCode (A.estDepartureAirport a) ++ " to " ++ showAirportCode (A.estArrivalAirport a)
   -- ++ ". Departure Time: ")
 
 parseDepartureData :: D.Departure -> String
 parseDepartureData d =
-  show (D.estDepartureAirport d) ++ " to " ++ show (D.estDepartureAirport d)
+  showAirportCode (D.estArrivalAirport d) ++ " to " ++ showAirportCode (D.estDepartureAirport d)
 
 -- renders a mercator projection with the origin and destination
 -- coordinates highlighted on the ASCII mercator map
