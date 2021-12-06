@@ -130,7 +130,7 @@ convertCoordinateToTotalMapLocation (lat, lon) = (x, y)
   where
     x = (lon + 180) * (U.mercatorMapTotalWidth / 360)
     y = (U.mercatorMapTotalHeight / 2) - (U.mercatorMapTotalWidth * mercN / (2 * pi))
-    mercN = log tan((pi / 4) + (latRad / 2))
+    mercN = log (tan((pi / 4) + (latRad / 2)))
     latRad = lat * pi / 180
     mapWidth = U.mercatorMapTotalWidth
     mapHeight = U.mercatorMapTotalHeight
