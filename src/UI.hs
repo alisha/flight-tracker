@@ -170,15 +170,15 @@ drawResults f =
       arrivals = borderWithLabel
         (str "Arrivals")
         $ L.renderList
-          (\_ t -> str (T.unpack t))
+          (\_ t -> str (parseArrivalData t))
           (focusGetCurrent (_focusRing f) == Just Arrivals)
-          (L.list Arrivals (Vec.fromList (map (T.pack . parseArrivalData) (_arrivalsData f))) 1)
+          (_brickArrivalsData f)
       departures = borderWithLabel
         (str "Departures")
         $ L.renderList
-          (\_ t -> str (T.unpack t))
+          (\_ t -> str (parseDepartureData t))
           (focusGetCurrent (_focusRing f) == Just Departures)
-          (L.list Departures (Vec.fromList (map (T.pack . parseDepartureData) (_departuresData f))) 1)
+          (_brickDeparturesData f)
       aircraftScreen = C.center $ str U.mercatorMap
       mainScreen = hBox [vBox [hLimit 50 arrivals, hLimit 50 departures], B.vBorder, aircraftScreen]
 
