@@ -32,8 +32,7 @@ fullopts = info (helper <*> opts)
 main :: IO ()
 main = do
   (Opts flg switch) <- execParser fullopts           -- get CLI opts/args
-  exitCode <- runApp                                   -- play game
-  putStrLn ("Thanks for playing")
+  runApp                                             -- play game
 
 
 runApp = runApplication

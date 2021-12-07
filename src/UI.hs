@@ -12,7 +12,7 @@ import Brick.Widgets.Border.Style (unicode)
 import Brick.Widgets.Center (center)
 import Brick.Forms
 import Brick.Widgets.Core
-import Lens.Micro (Lens', lens, (^.))
+import Lens.Micro (Lens', lens, (^.), (&), (.~))
 import Data.Time.Clock.POSIX
 import Brick.Main
 import Brick.Types
@@ -70,6 +70,14 @@ begin :: Lens' ArrivalsInput BeginTime
 begin = lens _begin (\input newBegin -> input { _begin = newBegin})
 end :: Lens' ArrivalsInput EndTime
 end = lens _end (\input newEnd -> input { _end = newEnd})
+
+focusRingLens :: Lens' AppState (FocusRing ResourceNames)
+focusRingLens = lens _focusRing (\input newFocusRing -> input { _focusRing = newFocusRing })
+brickArrivalsData :: Lens' AppState (L.List ResourceNames A.Arrival)
+brickArrivalsData = lens _brickArrivalsData (\input newList -> input { _brickArrivalsData = newList })
+brickDeparturesData :: Lens' AppState (L.List ResourceNames D.Departure)
+brickDeparturesData = lens _brickDeparturesData (\input newList -> input { _brickDeparturesData = newList })
+
 
 -- form metadata
 arrivalsForm :: ArrivalsInput -> Form ArrivalsInput e ArrivalsFields
@@ -161,19 +169,19 @@ drawResults f =
     Just Map -> [mainScreen]
     where
       arrivals = borderWithLabel
-        (str $ show "Arrivals")
+        (str "Arrivals")
         $ L.renderList
           (\_ t -> str (T.unpack t))
           (focusGetCurrent (_focusRing f) == Just Arrivals)
           (L.list Arrivals (Vec.fromList (map (T.pack . parseArrivalData) (_arrivalsData f))) 1)
       departures = borderWithLabel
-        (str $ show "Departures")
+        (str "Departures")
         $ L.renderList
           (\_ t -> str (T.unpack t))
           (focusGetCurrent (_focusRing f) == Just Departures)
           (L.list Departures (Vec.fromList (map (T.pack . parseDepartureData) (_departuresData f))) 1)
       aircraftScreen = C.center $ str U.mercatorMap
-      mainScreen = hBox [vBox [arrivals, departures], B.vBorder, aircraftScreen]
+      mainScreen = hBox [vBox [hLimit 50 arrivals, hLimit 50 departures], B.vBorder, aircraftScreen]
 
 -- special attribute map...not yet fully understood
 theMap :: AttrMap
@@ -195,7 +203,7 @@ app =
             case ev of
                 VtyEvent V.EvResize {}     -> continue s
                 VtyEvent (V.EvKey V.KEsc [])   -> halt s
-                VtyEvent (V.EvKey (V.KChar 'q') [])   -> halt s
+                VtyEvent (V.EvKey (V.KChar 'q') [])  -> halt s
                 -- Enter quits only when we aren't in the multi-line editor.
                 VtyEvent (V.EvKey V.KEnter [])
                     | focusGetCurrent (formFocus s) /= Just AirportField -> halt s
@@ -225,6 +233,16 @@ renderFlightInfo s =
       -- let x = renderMercatorCoords (latitude latestWaypoint, longitude latestWaypoint)
     _ -> continue s
 
+handleArrivalsEvent :: AppState -> V.Event -> EventM ResourceNames (Next AppState)
+handleArrivalsEvent s e = do
+  newArrivals <- L.handleListEvent e (s ^. brickArrivalsData)
+  continue (s & brickArrivalsData .~ newArrivals)
+
+handleDeparturesEvent :: AppState -> V.Event -> EventM ResourceNames (Next AppState)
+handleDeparturesEvent s e = do
+  newDepartures <- L.handleListEvent e (s ^. brickArrivalsData)
+  continue (s & brickArrivalsData .~ newDepartures)
+
 -- TODO: improve this
 -- Can add focus case so that you only render flight info when in the arrivals/
 -- departure windows
@@ -232,14 +250,27 @@ resultsApp :: App AppState e ResourceNames
 resultsApp =
   App { appDraw = drawResults,
         appHandleEvent = \s ev ->
+          let focus = focusGetCurrent (_focusRing s)
+          in
           case ev of
             VtyEvent (V.EvKey V.KEnter []) -> renderFlightInfo s
             VtyEvent (V.EvKey V.KEsc [])   -> halt s
             VtyEvent (V.EvKey (V.KChar 'q') [])   -> halt s
-            _ -> continue s
-          -- where focus = F.focusGetCurrent (s ^. focusRing)
+            VtyEvent (V.EvKey (V.KChar 'a') [])  -> do
+              let f' = focusSetCurrent Arrivals (_focusRing s)
+              continue (s & focusRingLens .~ f')
+            VtyEvent (V.EvKey (V.KChar 'd') [])  -> do
+              let f' = focusSetCurrent Departures (_focusRing s)
+              continue (s & focusRingLens .~ f')
+            _ ->
+              case (focus, ev) of
+                (Just Arrivals, VtyEvent e) ->
+                  handleArrivalsEvent s e
+                (Just Departures, VtyEvent e) ->
+                  handleDeparturesEvent s e
+                _ -> continue s
         , appChooseCursor = focusRingCursor _focusRing,
-        appStartEvent = return,
+        appStartEvent = pure,
         appAttrMap = const theMap
   }
 
@@ -249,7 +280,7 @@ ui = do
   -- default begin/end params
   now <- round `fmap` getPOSIXTime :: IO Integer
   let daySeconds = round nominalDay :: Integer
-  let beginTime = now - (daySeconds + fromIntegral (daySeconds `div` 2))
+  let beginTime = now - (daySeconds + fromIntegral (daySeconds `div` 4))
   -- need a default set of params
   let defaultArrivals = ArrivalsInput { _airport = KSAN, _begin = beginTime, _end = now  }
   -- idk....
