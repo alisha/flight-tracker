@@ -59,7 +59,8 @@ data AppState = AppState {
   _arrivalsData :: [A.Arrival],
   _departuresData :: [D.Departure],
   _brickArrivalsData :: L.List ResourceNames A.Arrival,
-  _brickDeparturesData :: L.List ResourceNames D.Departure
+  _brickDeparturesData :: L.List ResourceNames D.Departure,
+  _selectedFlight :: Maybe AircraftTrackResponse
 }
 
 -- These are magic functions needed in the "arrivalsForm" function
@@ -317,7 +318,8 @@ ui = do
     _arrivalsData = arrivals,
     _brickArrivalsData = L.list Arrivals (Vec.fromList arrivals) 1,
     _departuresData = departures,
-    _brickDeparturesData = L.list Departures (Vec.fromList departures) 1
+    _brickDeparturesData = L.list Departures (Vec.fromList departures) 1,
+    _selectedFlight = Nothing
   }
   putStrLn "created app state"
 
