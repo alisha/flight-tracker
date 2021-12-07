@@ -189,9 +189,8 @@ theMap = attrMap V.defAttr
   , (E.editFocusedAttr, V.black `on` V.yellow)
   , (invalidFormInputAttr, V.white `on` V.red)
   , (focusedFormInputAttr, V.black `on` V.yellow)
-  , (L.listAttr, V.white `on` V.black)
   , (L.listSelectedAttr, V.black `on` V.brightBlack)
-  , (L.listSelectedFocusedAttr, V.black `on` V.white)
+  , (L.listSelectedFocusedAttr, V.yellow `on` V.black)
   ]
 
 -- application function defines event handlers, forms, fields, etc
@@ -240,7 +239,7 @@ handleArrivalsEvent s e = do
 handleDeparturesEvent :: AppState -> V.Event -> EventM ResourceNames (Next AppState)
 handleDeparturesEvent s e = do
   newDepartures <- L.handleListEvent e (s ^. brickDeparturesData)
-  continue (s & brickDeparturesData .~ newDepartures)
+  continue (s & (brickDeparturesData .~ newDepartures))
 
 -- TODO: improve this
 -- Can add focus case so that you only render flight info when in the arrivals/
@@ -304,12 +303,17 @@ ui = do
   let params = formState f'
   -- print $ params
 
-  putStrLn "making arrivals request"
-  arrivals <- makeArrivalsRequest (_airport params) (_begin params) (_end params)
-  putStrLn "making departures request"
-  departures <- makeDeparturesRequest (_airport params) (_begin params) (_end params)
+
+  -- putStrLn "making arrivals request"
+  -- arrivals <- makeArrivalsRequest (_airport params) (_begin params) (_end params)
+  -- putStrLn "making departures request"
+  -- departures <- makeDeparturesRequest (_airport params) (_begin params) (_end params)
+  let arrivals = dummyArrivals
+  let departures = dummyDepartures
+
+
   let appState = AppState {
-    _focusRing = focusRing [Arrivals],
+    _focusRing = focusRing [Arrivals, Departures],
     _arrivalsData = arrivals,
     _brickArrivalsData = L.list Arrivals (Vec.fromList arrivals) 1,
     _departuresData = departures,
@@ -324,3 +328,14 @@ ui = do
 
 
 
+dummyArrivals :: [A.Arrival]
+dummyArrivals = [
+  A.Arrival "test1" (Just "test1") (Just "test2") "other test",
+  A.Arrival "test2" (Just "test3") (Just "test4") "other test2"
+  ]
+
+dummyDepartures :: [D.Departure ]
+dummyDepartures = [
+  D.Departure "test1" 1 (Just "test1") 1 (Just "test2") "test1" (Nothing) (Nothing) (Nothing) (Nothing) (Nothing) (Nothing),
+  D.Departure "test2" 1 (Just "test2") 1 (Just "test3") "test4" Nothing Nothing Nothing Nothing Nothing Nothing
+  ]
