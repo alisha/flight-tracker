@@ -13,6 +13,9 @@ import Brick.Widgets.Center (center)
 import Brick.Forms
 import Brick.Widgets.Core
 import Lens.Micro (Lens', lens, (^.), (&), (.~))
+import Data.Time.Format
+import Data.Time.LocalTime
+import Text.Printf
 import Data.Time.Clock.POSIX
 import Brick.Main
 import Brick.Types
@@ -100,14 +103,28 @@ draw f = [C.vCenter $ C.hCenter form <=> C.hCenter help]
 showAirportCode :: Maybe String -> String
 showAirportCode = Data.Maybe.fromMaybe "????"
 
+unixTimeToLocal :: Int -> String
+unixTimeToLocal t = do
+  let time = (utcToLocalTime (read "PDT") (posixSecondsToUTCTime (fromIntegral t)))
+  formatTime defaultTimeLocale "%H:%M %p" time
+
 parseArrivalData :: A.Arrival -> String
 parseArrivalData a =
-  showAirportCode (A.estDepartureAirport a) ++ " to " ++ showAirportCode (A.estArrivalAirport a)
-  -- ++ ". Departure Time: ")
+  printf "%s (%s) to %s (%s)" dptAirport dptTime arrAirport arrTime
+  where
+    dptAirport = showAirportCode (A.estDepartureAirport a)
+    dptTime = unixTimeToLocal (A.firstSeen a)
+    arrAirport = showAirportCode (A.estArrivalAirport a)
+    arrTime = unixTimeToLocal (A.lastSeen a)
 
 parseDepartureData :: D.Departure -> String
 parseDepartureData d =
-  showAirportCode (D.estDepartureAirport d) ++ " to " ++ showAirportCode (D.estArrivalAirport d)
+  printf "%s (%s) to %s (%s)" dptAirport dptTime arrAirport arrTime
+  where
+    dptAirport = showAirportCode (D.estDepartureAirport d)
+    dptTime = unixTimeToLocal (D.firstSeen d)
+    arrAirport = showAirportCode (D.estArrivalAirport d)
+    arrTime = unixTimeToLocal (D.lastSeen d)
 
 -- renders a mercator projection with the origin and destination
 -- coordinates highlighted on the ASCII mercator map
@@ -343,8 +360,8 @@ ui = do
 
 dummyArrivals :: [A.Arrival]
 dummyArrivals = [
-  A.Arrival "test1" (Just "test1") (Just "test2") "other test",
-  A.Arrival "test2" (Just "test3") (Just "test4") "other test2"
+  A.Arrival "test1" (Just "test1") (Just "test2") 1 "other test" 2,
+  A.Arrival "test2" (Just "test3") (Just "test4") 1 "other test2" 2
   ]
 
 dummyDepartures :: [D.Departure ]

@@ -18,7 +18,7 @@ data Arrival = Arrival {
   estDepartureAirport :: Maybe String,
   -- estDepartureAirportHorizDistance :: Int,
   -- estDepartureAirportVertDistance :: Int,
-  -- firstSeen :: Int,
-  icao24 :: String
-  -- lastSeen :: Int
+  firstSeen :: Int,
+  icao24 :: String,
+  lastSeen :: Int
 } deriving (Eq, Show, Generic, ToJSON, FromJSON)
