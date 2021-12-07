@@ -22,7 +22,6 @@ import qualified Brick.Widgets.Edit as E
 import qualified Brick.Widgets.Border as B
 import qualified Brick.Widgets.Center as C
 import qualified Brick.Widgets.List as L
-import qualified Brick.Widgets.Table as BT
 
 import qualified Data.Vector as Vec
 import qualified Data.Text as T
@@ -240,8 +239,8 @@ handleArrivalsEvent s e = do
 
 handleDeparturesEvent :: AppState -> V.Event -> EventM ResourceNames (Next AppState)
 handleDeparturesEvent s e = do
-  newDepartures <- L.handleListEvent e (s ^. brickArrivalsData)
-  continue (s & brickArrivalsData .~ newDepartures)
+  newDepartures <- L.handleListEvent e (s ^. brickDeparturesData)
+  continue (s & brickDeparturesData .~ newDepartures)
 
 -- TODO: improve this
 -- Can add focus case so that you only render flight info when in the arrivals/
