@@ -77,7 +77,8 @@ brickArrivalsData :: Lens' AppState (L.List ResourceNames A.Arrival)
 brickArrivalsData = lens _brickArrivalsData (\input newList -> input { _brickArrivalsData = newList })
 brickDeparturesData :: Lens' AppState (L.List ResourceNames D.Departure)
 brickDeparturesData = lens _brickDeparturesData (\input newList -> input { _brickDeparturesData = newList })
-
+selectedFlight :: Lens' AppState (Maybe AircraftTrackResponse)
+selectedFlight = lens _selectedFlight (\input newSelectedFlight -> input { _selectedFlight = newSelectedFlight})
 
 -- form metadata
 arrivalsForm :: ArrivalsInput -> Form ArrivalsInput e ArrivalsFields
@@ -219,23 +220,33 @@ app =
         , appAttrMap = const theMap
         }
 
+getSelectedFlightTrack :: AppState -> IO (Maybe AircraftTrackResponse)
+getSelectedFlightTrack s = do
+  case focusGetCurrent (_focusRing s) of
+    Just Arrivals -> do
+      case L.listSelectedElement (_brickArrivalsData s) of
+        Just (_, flight) -> do
+          x <- makeAircraftTrackRequest (A.icao24 flight) 0
+          return (Just x)
+        Nothing -> return Nothing
+    Just Departures -> do
+      case L.listSelectedElement (_brickDeparturesData s) of
+        Just (_, flight) -> do
+          x <- makeAircraftTrackRequest (D.icao24 flight) 0
+          return (Just x)
+        Nothing -> return Nothing
+    _ -> return Nothing
+
 renderFlightInfo :: AppState -> EventM n (Next AppState)
-renderFlightInfo s =
-  case L.listSelectedElement (_brickDeparturesData s) of
-    Just (_, departure) -> do
-      -- Make API request for aircraft tracking
-      tracked <- liftIO $ makeAircraftTrackRequest (D.icao24 departure) 0
-      let waypoints = path tracked
-      continue s
-      -- let latestWaypoint = if length waypoints == 1 then waypoints !! 0
-      -- let x = renderMercatorCoords (D.estDepartureAirportHorizDistance departure, D.estDepartureAirportVertDistance departure)
-      -- let x = renderMercatorCoords (latitude latestWaypoint, longitude latestWaypoint)
-    _ -> continue s
+renderFlightInfo s = do
+  selectedFlightResponse <- liftIO $ (getSelectedFlightTrack s)
+  continue (s & (selectedFlight .~ selectedFlightResponse))
 
 handleArrivalsEvent :: AppState -> V.Event -> EventM ResourceNames (Next AppState)
 handleArrivalsEvent s e = do
-  newArrivals <- L.handleListEvent e (s ^. brickArrivalsData)
-  continue (s & brickArrivalsData .~ newArrivals)
+  newArrivals <- L.handleListEvent e (_brickArrivalsData s)
+  let newState = s & brickArrivalsData .~ newArrivals
+  continue newState
 
 handleDeparturesEvent :: AppState -> V.Event -> EventM ResourceNames (Next AppState)
 handleDeparturesEvent s e = do
