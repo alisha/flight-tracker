@@ -26,7 +26,6 @@ import qualified Brick.Widgets.List as L
 import qualified Data.Vector as Vec
 
 import Brick
-import Data.Time.Clock
 import Requests
 import Types
 import qualified Arrival as A
@@ -36,6 +35,14 @@ import Control.Monad.Cont (MonadIO(liftIO))
 import qualified Data.Maybe
 import Data.List.Utils (replace)
 import Brick.Widgets.Border (borderWithLabel)
+import Data.Text (splitOn, pack, unpack)
+import Graphics.Vty.Image (vertCat)
+import Graphics.Vty.Attributes ( withBackColor, yellow, red )
+import Data.List (intersperse)
+import Graphics.Vty (horizCat)
+import Graphics.Vty (withForeColor)
+import Graphics.Vty.Attributes (defAttr)
+import Graphics.Vty (string)
 
 data ArrivalsFields = AirportField | BeginField | EndField
   deriving(Eq, Ord, Show)
@@ -132,12 +139,15 @@ parseDepartureData d =
     arrAirport = showAirportCode (D.estArrivalAirport d)
     arrTime = unixTimeToLocal (D.lastSeen d)
 
+-- ansiReplacement = "\ESC[31;43mX\ESC[39;49m"
+ansiReplacement = "X"
+
 -- renders the map -- uses the ANSI escape sequence for red FG and yellow BG
 -- to replace the waypoint locations to make them more visible
 -- it is important to first plot the 'X's on the map before inserting the ANSI
 -- codes or else it would not plot the waypoints in the proper location.
 renderMap :: [Waypoint] -> String
-renderMap points = replace "X" "\ESC[31;43mX\ESC[39;49m" folded
+renderMap points = replace "X" ansiReplacement folded
   where
     folded = foldr func base coords
     filterFunc point = case (latitude point, longitude point) of
@@ -225,13 +235,21 @@ drawResults f =
           (\_ t -> str (parseDepartureData t))
           (focusGetCurrent (_focusRing f) == Just Departures)
           (_brickDeparturesData f)
-      aircraftScreen = borderWithLabel (str "Map" ) $ C.center $ str aMap
+      aircraftScreen = hLimit 121 $ vLimit 24 $  borderWithLabel (str "Map" ) $ raw rawVtyImage
         where
-          aMap = case _selectedFlight f of
+          rawStringMap = case _selectedFlight f of
             Nothing -> U.mercatorMap
             Just selected -> renderMap (path selected)
+          splitMap = splitOn "\n" (pack rawStringMap)
+          ansiCodedLines = map horizImg splitMap
+          horizImg line = horizCat joined
+            where
+              splits = splitOn (pack ansiReplacement) line
+              splitVtyStr = map (string defAttr . unpack) splits
+              joined = intersperse (string ((defAttr `withBackColor` yellow) `withForeColor` red) ansiReplacement) splitVtyStr
+          rawVtyImage = vertCat ansiCodedLines
       aircraftResponse = maybe "No Flight Selected" show (_selectedFlight f)
-      mainScreen = hBox [vBox [hLimit 50 arrivals, hLimit 50 departures], B.vBorder, hLimit 20 (C.center $ str aircraftResponse), B.vBorder, aircraftScreen]
+      mainScreen = hBox [vBox [hLimit 50 arrivals, hLimit 50 departures], hLimit 30 (C.center $ str aircraftResponse), C.center aircraftScreen]
 
 -- special attribute map...not yet fully understood
 theMap :: AttrMap
@@ -315,6 +333,10 @@ resultsApp =
             VtyEvent (V.EvKey V.KEnter []) -> renderFlightInfo s
             VtyEvent (V.EvKey V.KEsc [])   -> halt s
             VtyEvent (V.EvKey (V.KChar 'q') [])   -> halt s
+            VtyEvent (V.EvKey (V.KChar 'r') [])  -> do
+                  let newFlight = Nothing
+                  let s' = s & (selectedFlight .~ newFlight)
+                  continue s'
             VtyEvent (V.EvKey (V.KChar 'a') [])  -> do
               let f' = focusSetCurrent Arrivals (_focusRing s)
               continue (s & focusRingLens .~ f')
@@ -337,11 +359,16 @@ resultsApp =
 ui :: IO ()
 ui = do
   -- default begin/end params
-  now <- round `fmap` getPOSIXTime :: IO Integer
-  let daySeconds = round nominalDay :: Integer
-  let beginTime = now - (daySeconds + fromIntegral (daySeconds `div` 4))
+  ct <- getCurrentTime
+  let now = round (toRational (utcTimeToPOSIXSeconds ct))
+  let daySeconds = 60 * 60 * 24
+  let hourSeconds = 60 * 60
+  -- let diffSecs = now `mod` daySeconds
+  -- putStrLn ("diffSecs " ++ show diffSecs)
+  let beginTime = now - daySeconds
+  let endTime = beginTime + (6 * hourSeconds)
   -- need a default set of params
-  let defaultArrivals = ArrivalsInput { _airport = KSAN, _begin = beginTime, _end = now  }
+  let defaultArrivals = ArrivalsInput { _airport = KSAN, _begin = beginTime, _end = endTime  }
   -- idk....
   let buildVty = do
         v <- V.mkVty =<< V.standardIOConfig
