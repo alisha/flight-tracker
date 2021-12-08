@@ -37,12 +37,10 @@ import Data.List.Utils (replace)
 import Brick.Widgets.Border (borderWithLabel)
 import Data.Text (splitOn, pack, unpack)
 import Graphics.Vty.Image (vertCat)
-import Graphics.Vty.Attributes ( withBackColor, yellow, red )
+import Graphics.Vty.Attributes
+    ( withBackColor, yellow, red, defAttr )
 import Data.List (intersperse)
-import Graphics.Vty (horizCat)
-import Graphics.Vty (withForeColor)
-import Graphics.Vty.Attributes (defAttr)
-import Graphics.Vty (string)
+import Graphics.Vty ( horizCat, withForeColor, string )
 
 data ArrivalsFields = AirportField | BeginField | EndField
   deriving(Eq, Ord, Show)
@@ -90,7 +88,7 @@ selectedFlight = lens _selectedFlight (\input newSelectedFlight -> input { _sele
 
 -- form metadata
 arrivalsForm :: ArrivalsInput -> Form ArrivalsInput e ArrivalsFields
-arrivalsForm = let label s w = padBottom (Pad 1) $ (vLimit 1 $ hLimit 15 $ str s <+> fill ' ') <+> w
+arrivalsForm = let label s w = padBottom (Pad 1) $ vLimit 1 (hLimit 15 $ str s <+> fill ' ') <+> w
   in newForm [
     label "Airport" @@= editShowableField airport AirportField,
     label "begin" @@= editShowableField begin BeginField,
@@ -110,7 +108,7 @@ showAirportCode = Data.Maybe.fromMaybe "????"
 
 unixTimeToLocal :: Int -> String
 unixTimeToLocal t = do
-  let time = (utcToLocalTime (read "PDT") (posixSecondsToUTCTime (fromIntegral t)))
+  let time = utcToLocalTime (read "PDT") (posixSecondsToUTCTime (fromIntegral t))
   formatTime defaultTimeLocale "%H:%M %p" time
 
 instance Show AircraftTrackResponse where

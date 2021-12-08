@@ -75,8 +75,3 @@ instance FromJSON Waypoint where
     return $ Waypoint time lat lon baro_altitude true_track on_ground
   parseJSON _ = do fail "waypoint must be array"
 
-
--- instance FromJSON Waypoint where
---   parseJSON (Object a) = invalid
---   parseJSON _ = invalid
-
