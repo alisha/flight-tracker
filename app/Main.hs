@@ -1,12 +1,8 @@
 module Main where
 
-import Control.Monad (when)
-import System.Exit (exitSuccess)
-import Text.Read (readMaybe)
 import Lib
 
 import Options.Applicative
-import Lib (runApplication)
 
 data Opts = Opts
   { optionalFlag :: Maybe Int
@@ -31,8 +27,9 @@ fullopts = info (helper <*> opts)
 
 main :: IO ()
 main = do
-  (Opts flg switch) <- execParser fullopts           -- get CLI opts/args
+  (Opts _ _) <- execParser fullopts           -- get CLI opts/args
   runApp                                             -- play game
 
 
+runApp :: IO ()
 runApp = runApplication

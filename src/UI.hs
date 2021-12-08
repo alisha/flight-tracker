@@ -7,9 +7,6 @@ where
 import qualified Graphics.Vty as V
 
 
-import Brick.Widgets.Border (borderWithLabel, hBorder)
-import Brick.Widgets.Border.Style (unicode)
-import Brick.Widgets.Center (center)
 import Brick.Forms
 import Brick.Widgets.Core
 import Lens.Micro (Lens', lens, (^.), (&), (.~))
@@ -27,7 +24,6 @@ import qualified Brick.Widgets.Center as C
 import qualified Brick.Widgets.List as L
 
 import qualified Data.Vector as Vec
-import qualified Data.Text as T
 
 import Brick
 import Data.Time.Clock
@@ -38,10 +34,8 @@ import qualified Departure as D
 import qualified USA as U
 import Control.Monad.Cont (MonadIO(liftIO))
 import qualified Data.Maybe
-import Data.Vector (fromList)
-import Data.Vector.Generic (toList)
-import Data.Aeson (Array, fromJSON)
-import Data.Aeson.Types (parseMaybe)
+import Data.List.Utils (replace)
+import Brick.Widgets.Border (borderWithLabel)
 
 data ArrivalsFields = AirportField | BeginField | EndField
   deriving(Eq, Ord, Show)
@@ -112,6 +106,14 @@ unixTimeToLocal t = do
   let time = (utcToLocalTime (read "PDT") (posixSecondsToUTCTime (fromIntegral t)))
   formatTime defaultTimeLocale "%H:%M %p" time
 
+instance Show AircraftTrackResponse where
+  show f = "\
+            \ICAO24: "     ++ icao24 f           ++ "\n\
+            \start time: " ++ unixTimeToLocal (fromIntegral (startTime f)) ++ "\n\
+            \end time: "   ++ unixTimeToLocal (fromIntegral (endTime f))   ++ "\n\
+            \callsign: "   ++ callsign f         ++ "\n\
+            \"
+
 parseArrivalData :: A.Arrival -> String
 parseArrivalData a =
   printf "%s (%s) to %s (%s)" dptAirport dptTime arrAirport arrTime
@@ -129,6 +131,37 @@ parseDepartureData d =
     dptTime = unixTimeToLocal (D.firstSeen d)
     arrAirport = showAirportCode (D.estArrivalAirport d)
     arrTime = unixTimeToLocal (D.lastSeen d)
+
+-- renders the map -- uses the ANSI escape sequence for red FG and yellow BG
+-- to replace the waypoint locations to make them more visible
+-- it is important to first plot the 'X's on the map before inserting the ANSI
+-- codes or else it would not plot the waypoints in the proper location.
+renderMap :: [Waypoint] -> String
+renderMap points = replace "X" "\ESC[31;43mX\ESC[39;49m" folded
+  where
+    folded = foldr func base coords
+    filterFunc point = case (latitude point, longitude point) of
+      (Just _, Just _) -> True
+      _ -> False
+    filteredPoints = filter filterFunc points
+    mapFunc pt = case (latitude pt, longitude pt) of
+      (Just x, Just y) -> (x, y)
+      _ -> (0, 0)
+    coords = map mapFunc filteredPoints
+    base = U.mercatorMap
+    func coords map = renderMercatorCoords coords map
+
+
+renderMercatorCoords :: (Float, Float) -> String -> String
+renderMercatorCoords (lat, lon) = replaceCharAtIndex calculatedIdx 'X'
+  where
+    -- at this point, we have the coordinate pair properly as it would be rendered
+    -- for a pixel-based image, but we have an ASCII based one.
+    -- so we need to perform one more coordinate transform to go from pixel coordinate
+    -- to ascii map coordinates.
+    (x, y) = U.convertPixelToAsciiCoordinates (convertCoordinateToMapLocation (lat, lon))
+    calculatedIdx :: Int
+    calculatedIdx =  (y * fromIntegral (U.mapCharWidth + 1)) + x
 
 -- renders a mercator projection with the origin and destination
 -- coordinates highlighted on the ASCII mercator map
@@ -152,56 +185,25 @@ parseDepartureData d =
 -- // get y value
 -- mercN = ln(tan((PI/4)+(latRad/2)));
 -- y     = (mapHeight/2)-(mapWidth*mercN/(2*PI));
-renderMap :: [Waypoint] -> String
-renderMap points = foldr func base coords
+convertCoordinateToPixelMapLocation :: (Float, Float) -> (Float, Float)
+convertCoordinateToPixelMapLocation (lat, lon) = (x, y)
   where
-    filterFunc point = case (latitude point, longitude point) of
-      (Just _, Just _) -> True
-      _ -> False
-    filteredPoints = filter filterFunc points
-    mapFunc pt = case (latitude pt, longitude pt) of
-      (Just x, Just y) -> (x, y)
-      _ -> (0, 0)
-    coords = map mapFunc filteredPoints
-    base = U.mercatorMap
-    func coords map = renderMercatorCoords coords map
-
-
-renderMercatorCoords :: (Float, Float) -> String -> String
-renderMercatorCoords (lat, lon) = replaceCharAtIndex calculatedIdx 'X'
-  where
-    (x, y) = convertCoordinateToMapLocation (lat, lon)
-    calculatedIdx :: Int
-    calculatedIdx =  floor ((y * fromIntegral (U.mapCharWidth + 1)) + x)
-
-convertCoordinateToTotalMapLocation :: (Float, Float) -> (Float, Float)
-convertCoordinateToTotalMapLocation (lat, lon) = (x, y)
-  where
-    x = (lon + 180) * (U.mercatorMapTotalWidth / 360)
-    y = (U.mercatorMapTotalHeight / 2) - (U.mercatorMapTotalWidth * mercN / (2 * pi))
+    x = (lon + 180) * (U.mercatorMapPixelTotalWidth / 360)
+    y = (U.mercatorMapPixelTotalHeight / 2) - (U.mercatorMapPixelTotalWidth * mercN / (2 * pi))
     mercN = log (tan((pi / 4) + (latRad / 2)))
     latRad = lat * pi / 180
-    mapWidth = U.mercatorMapTotalWidth
-    mapHeight = U.mercatorMapTotalHeight
 
 convertCoordinateToMapLocation :: (Float, Float) -> (Float, Float)
 convertCoordinateToMapLocation (lat, lon) = (x, y)
   where
-    (xTot, yTot) = convertCoordinateToTotalMapLocation (lat, lon)
-    x = xTot - U.mercatorMapOriginWidth
-    y = yTot - U.mercatorMapOriginHeight
+    (xTot, yTot) = convertCoordinateToPixelMapLocation (lat, lon)
+    x = xTot - U.mercatorMapPixelOriginWidth
+    y = yTot - U.mercatorMapPixelOriginHeight
 
 -- replace a character at a particualr index
 replaceCharAtIndex :: Int -> Char -> String -> String
 replaceCharAtIndex index replacement str = strHead ++ [replacement] ++ drop 1 strAfter
   where (strHead, strAfter) = splitAt index str
-
-
-parseWaypointPath :: Maybe AircraftTrackResponse  -> Maybe [Waypoint]
-parseWaypointPath resp = case resp of
-  Nothing -> Nothing
-  Just r -> parseMaybe (mapM fromJSON (toList r))
-
 
 drawResults :: AppState -> [Widget ResourceNames]
 drawResults f =
@@ -223,9 +225,11 @@ drawResults f =
           (\_ t -> str (parseDepartureData t))
           (focusGetCurrent (_focusRing f) == Just Departures)
           (_brickDeparturesData f)
-      aircraftScreen = C.center $ str aMap
+      aircraftScreen = borderWithLabel (str "Map" ) $ C.center $ str aMap
         where
-          aMap = maybe U.mercatorMap renderMap (parseWaypointPath (_selectedFlight f))
+          aMap = case _selectedFlight f of
+            Nothing -> U.mercatorMap
+            Just selected -> renderMap (path selected)
       aircraftResponse = maybe "No Flight Selected" show (_selectedFlight f)
       mainScreen = hBox [vBox [hLimit 50 arrivals, hLimit 50 departures], B.vBorder, hLimit 20 (C.center $ str aircraftResponse), B.vBorder, aircraftScreen]
 
@@ -237,7 +241,7 @@ theMap = attrMap V.defAttr
   , (invalidFormInputAttr, V.white `on` V.red)
   , (focusedFormInputAttr, V.black `on` V.yellow)
   , (L.listSelectedAttr, V.black `on` V.brightBlack)
-  , (L.listSelectedFocusedAttr, V.yellow `on` V.white)
+  , (L.listSelectedFocusedAttr, V.blue `on` V.white)
   ]
 
 -- application function defines event handlers, forms, fields, etc
@@ -369,7 +373,7 @@ ui = do
   -- let departures = dummyDepartures
 
 
-  let s = AircraftTrackResponse "icao 24 ???" 12345 6789 "the callsign" [Just (Waypoint 0 (Just 40.7128) (Just 74.0060) (Just 1)  (Just 1) False)]
+  -- let s = AircraftTrackResponse "icao 24 ???" 12345 6789 "the callsign" [Waypoint 0 (Just 40.7128) (Just 74.0060) (Just 1)  (Just 1) False]
 
   let appState = AppState {
     _focusRing = focusRing [Arrivals, Departures],
@@ -377,16 +381,13 @@ ui = do
     _brickArrivalsData = L.list Arrivals (Vec.fromList arrivals) 1,
     _departuresData = departures,
     _brickDeparturesData = L.list Departures (Vec.fromList departures) 1,
-    _selectedFlight = Just s
+    _selectedFlight = Nothing
   }
-  putStrLn "created app state"
 
   initialVty <- buildVty
   putStrLn "created initial vty"
   _ <- customMain initialVty buildVty Nothing resultsApp appState
   putStrLn "Thanks for playing!"
-
-
 
 -- dummyArrivals :: [A.Arrival]
 -- dummyArrivals = [

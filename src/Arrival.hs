@@ -10,7 +10,7 @@ import GHC.Generics
 
 data Arrival = Arrival {
   -- arrivalAirportCandidatesCount :: Int ,
-  callsign :: String,
+  callsign :: Maybe String,
   -- departureAirportCandidatesCount :: Int,
   estArrivalAirport :: Maybe String,
   -- estArrivalAirportHorizDistance :: Int,
