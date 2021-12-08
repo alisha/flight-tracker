@@ -38,6 +38,10 @@ import qualified Departure as D
 import qualified USA as U
 import Control.Monad.Cont (MonadIO(liftIO))
 import qualified Data.Maybe
+import Data.Vector (fromList)
+import Data.Vector.Generic (toList)
+import Data.Aeson (Array, fromJSON)
+import Data.Aeson.Types (parseMaybe)
 
 data ArrivalsFields = AirportField | BeginField | EndField
   deriving(Eq, Ord, Show)
@@ -148,14 +152,29 @@ parseDepartureData d =
 -- // get y value
 -- mercN = ln(tan((PI/4)+(latRad/2)));
 -- y     = (mapHeight/2)-(mapWidth*mercN/(2*PI));
-renderMercatorCoords :: (Double, Double) -> String -> String
-renderMercatorCoords (lat, lon) map = replaceCharAtIndex calculatedIdx 'X' map
+renderMap :: [Waypoint] -> String
+renderMap points = foldr func base coords
+  where
+    filterFunc point = case (latitude point, longitude point) of
+      (Just _, Just _) -> True
+      _ -> False
+    filteredPoints = filter filterFunc points
+    mapFunc pt = case (latitude pt, longitude pt) of
+      (Just x, Just y) -> (x, y)
+      _ -> (0, 0)
+    coords = map mapFunc filteredPoints
+    base = U.mercatorMap
+    func coords map = renderMercatorCoords coords map
+
+
+renderMercatorCoords :: (Float, Float) -> String -> String
+renderMercatorCoords (lat, lon) = replaceCharAtIndex calculatedIdx 'X'
   where
     (x, y) = convertCoordinateToMapLocation (lat, lon)
     calculatedIdx :: Int
     calculatedIdx =  floor ((y * fromIntegral (U.mapCharWidth + 1)) + x)
 
-convertCoordinateToTotalMapLocation :: (Double, Double) -> (Double, Double)
+convertCoordinateToTotalMapLocation :: (Float, Float) -> (Float, Float)
 convertCoordinateToTotalMapLocation (lat, lon) = (x, y)
   where
     x = (lon + 180) * (U.mercatorMapTotalWidth / 360)
@@ -165,7 +184,7 @@ convertCoordinateToTotalMapLocation (lat, lon) = (x, y)
     mapWidth = U.mercatorMapTotalWidth
     mapHeight = U.mercatorMapTotalHeight
 
-convertCoordinateToMapLocation :: (Double, Double) -> (Double, Double)
+convertCoordinateToMapLocation :: (Float, Float) -> (Float, Float)
 convertCoordinateToMapLocation (lat, lon) = (x, y)
   where
     (xTot, yTot) = convertCoordinateToTotalMapLocation (lat, lon)
@@ -176,6 +195,12 @@ convertCoordinateToMapLocation (lat, lon) = (x, y)
 replaceCharAtIndex :: Int -> Char -> String -> String
 replaceCharAtIndex index replacement str = strHead ++ [replacement] ++ drop 1 strAfter
   where (strHead, strAfter) = splitAt index str
+
+
+parseWaypointPath :: Maybe AircraftTrackResponse  -> Maybe [Waypoint]
+parseWaypointPath resp = case resp of
+  Nothing -> Nothing
+  Just r -> parseMaybe (mapM fromJSON (toList r))
 
 
 drawResults :: AppState -> [Widget ResourceNames]
@@ -198,8 +223,11 @@ drawResults f =
           (\_ t -> str (parseDepartureData t))
           (focusGetCurrent (_focusRing f) == Just Departures)
           (_brickDeparturesData f)
-      aircraftScreen = C.center $ str U.mercatorMap
-      mainScreen = hBox [vBox [hLimit 50 arrivals, hLimit 50 departures], B.vBorder, aircraftScreen]
+      aircraftScreen = C.center $ str aMap
+        where
+          aMap = maybe U.mercatorMap renderMap (parseWaypointPath (_selectedFlight f))
+      aircraftResponse = maybe "No Flight Selected" show (_selectedFlight f)
+      mainScreen = hBox [vBox [hLimit 50 arrivals, hLimit 50 departures], B.vBorder, hLimit 20 (C.center $ str aircraftResponse), B.vBorder, aircraftScreen]
 
 -- special attribute map...not yet fully understood
 theMap :: AttrMap
@@ -209,7 +237,7 @@ theMap = attrMap V.defAttr
   , (invalidFormInputAttr, V.white `on` V.red)
   , (focusedFormInputAttr, V.black `on` V.yellow)
   , (L.listSelectedAttr, V.black `on` V.brightBlack)
-  , (L.listSelectedFocusedAttr, V.yellow `on` V.black)
+  , (L.listSelectedFocusedAttr, V.yellow `on` V.white)
   ]
 
 -- application function defines event handlers, forms, fields, etc
@@ -243,20 +271,20 @@ getSelectedFlightTrack s = do
     Just Arrivals -> do
       case L.listSelectedElement (_brickArrivalsData s) of
         Just (_, flight) -> do
-          x <- makeAircraftTrackRequest (A.icao24 flight) 0
+          x <- makeAircraftTrackRequest (A.icao24 flight) (fromIntegral (A.firstSeen flight))
           return (Just x)
         Nothing -> return Nothing
     Just Departures -> do
       case L.listSelectedElement (_brickDeparturesData s) of
         Just (_, flight) -> do
-          x <- makeAircraftTrackRequest (D.icao24 flight) 0
+          x <- makeAircraftTrackRequest (D.icao24 flight) (fromIntegral (D.firstSeen flight))
           return (Just x)
         Nothing -> return Nothing
     _ -> return Nothing
 
 renderFlightInfo :: AppState -> EventM n (Next AppState)
 renderFlightInfo s = do
-  selectedFlightResponse <- liftIO $ (getSelectedFlightTrack s)
+  selectedFlightResponse <- liftIO $ getSelectedFlightTrack s
   continue (s & (selectedFlight .~ selectedFlightResponse))
 
 handleArrivalsEvent :: AppState -> V.Event -> EventM ResourceNames (Next AppState)
@@ -333,13 +361,15 @@ ui = do
   -- print $ params
 
 
-  -- putStrLn "making arrivals request"
-  -- arrivals <- makeArrivalsRequest (_airport params) (_begin params) (_end params)
-  -- putStrLn "making departures request"
-  -- departures <- makeDeparturesRequest (_airport params) (_begin params) (_end params)
-  let arrivals = dummyArrivals
-  let departures = dummyDepartures
+  putStrLn "making arrivals request"
+  arrivals <- makeArrivalsRequest (_airport params) (_begin params) (_end params)
+  putStrLn "making departures request"
+  departures <- makeDeparturesRequest (_airport params) (_begin params) (_end params)
+  -- let arrivals = dummyArrivals
+  -- let departures = dummyDepartures
 
+
+  let s = AircraftTrackResponse "icao 24 ???" 12345 6789 "the callsign" [Just (Waypoint 0 (Just 40.7128) (Just 74.0060) (Just 1)  (Just 1) False)]
 
   let appState = AppState {
     _focusRing = focusRing [Arrivals, Departures],
@@ -347,7 +377,7 @@ ui = do
     _brickArrivalsData = L.list Arrivals (Vec.fromList arrivals) 1,
     _departuresData = departures,
     _brickDeparturesData = L.list Departures (Vec.fromList departures) 1,
-    _selectedFlight = Nothing
+    _selectedFlight = Just s
   }
   putStrLn "created app state"
 
@@ -358,14 +388,14 @@ ui = do
 
 
 
-dummyArrivals :: [A.Arrival]
-dummyArrivals = [
-  A.Arrival "test1" (Just "test1") (Just "test2") 1 "other test" 2,
-  A.Arrival "test2" (Just "test3") (Just "test4") 1 "other test2" 2
-  ]
+-- dummyArrivals :: [A.Arrival]
+-- dummyArrivals = [
+--   A.Arrival "test1" (Just "test1") (Just "test2") "other test",
+--   A.Arrival "test2" (Just "test3") (Just "test4") "other test2"
+--   ]
 
-dummyDepartures :: [D.Departure ]
-dummyDepartures = [
-  D.Departure "test1" 1 (Just "test1") 1 (Just "test2") "test1" (Nothing) (Nothing) (Nothing) (Nothing) (Nothing) (Nothing),
-  D.Departure "test2" 1 (Just "test2") 1 (Just "test3") "test4" Nothing Nothing Nothing Nothing Nothing Nothing
-  ]
+-- dummyDepartures :: [D.Departure ]
+-- dummyDepartures = [
+--   D.Departure "test1" 1 (Just "test1") 1 (Just "test2") "test1" (Nothing) (Nothing) (Nothing) (Nothing) (Nothing) (Nothing),
+--   D.Departure "test2" 1 (Just "test2") 1 (Just "test3") "test4" Nothing Nothing Nothing Nothing Nothing Nothing
+--   ]

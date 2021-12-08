@@ -4,11 +4,10 @@ module Types (
   Airport,
   Flight,
   AircraftTrackResponse (..),
-  Waypoint,
+  Waypoint (..),
 ) where
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (FromJSON, ToJSON, Array)
 import GHC.Generics
-
 
 -- Simply the ICAO codenames
 -- non-exhaustive list
@@ -59,14 +58,23 @@ data AircraftTrackResponse = AircraftTrackResponse
     startTime :: Integer,
     endTime :: Integer,
     callsign :: String,
-    path :: [Waypoint]
-  } deriving (Eq, Show, Generic, ToJSON, FromJSON)
+    path :: Array
+  } deriving (Eq, Generic, ToJSON, FromJSON)
 
 data Waypoint = Waypoint
   { time :: Integer,
-    latitude :: Float,
-    longitude :: Float,
-    baro_altitude :: Float,
-    true_track :: Float,
+    latitude :: Maybe Float,
+    longitude :: Maybe Float,
+    baro_altitude :: Maybe Float,
+    true_track :: Maybe Float,
     on_ground :: Bool
   } deriving (Eq, Show, Generic, ToJSON, FromJSON)
+
+
+instance Show AircraftTrackResponse where
+  show f = "\
+            \ICAO24: "     ++ icao24 f           ++ "\n\
+            \start time: " ++ show (startTime f) ++ "\n\
+            \end time: "   ++ show (endTime f)   ++ "\n\
+            \callsign: "   ++ callsign f         ++ "\n\
+            \"

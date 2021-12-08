@@ -10,13 +10,13 @@ module USA (
 )
 where
 
-mercatorMapTotalWidth :: Double
+mercatorMapTotalWidth :: Float
 mercatorMapTotalWidth = 793
-mercatorMapTotalHeight :: Double
+mercatorMapTotalHeight :: Float
 mercatorMapTotalHeight = 363
-mercatorMapOriginWidth :: Double
+mercatorMapOriginWidth :: Float
 mercatorMapOriginWidth = 125
-mercatorMapOriginHeight :: Double
+mercatorMapOriginHeight :: Float
 mercatorMapOriginHeight = 120
 
 mapCharWidth :: Int
