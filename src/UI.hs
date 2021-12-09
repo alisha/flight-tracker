@@ -184,7 +184,6 @@ renderMercatorCoords (lat, lon) = replaceCharAtIndex calculatedIdx 'X'
 -- mapWidth    = 200;
 -- mapHeight   = 100;
 
--- // get x value
 -- x = (longitude+180)*(mapWidth/360)
 
 -- // convert from degrees to radians
@@ -247,7 +246,7 @@ drawResults f =
               joined = intersperse (string ((defAttr `withBackColor` yellow) `withForeColor` red) ansiReplacement) splitVtyStr
           rawVtyImage = vertCat ansiCodedLines
       aircraftResponse = maybe "No Flight Selected" show (_selectedFlight f)
-      mainScreen = hBox [vBox [hLimit 50 arrivals, hLimit 50 departures], hLimit 30 (C.center $ str aircraftResponse), C.center aircraftScreen]
+      mainScreen = hBox [vBox [hLimit 37 arrivals, hLimit 37 departures], hLimit 23 (C.center $ str aircraftResponse), C.center aircraftScreen]
 
 -- special attribute map...not yet fully understood
 theMap :: AttrMap
