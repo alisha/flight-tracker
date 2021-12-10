@@ -1,7 +1,8 @@
 {-# LANGUAGE BlockArguments #-}
 module UI
   ( ui,
-  convertCoordinateToPixelMapLocation
+  convertCoordinateToPixelMapLocation,
+  unixTimeToLocal
   )
 where
 

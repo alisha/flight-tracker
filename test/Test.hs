@@ -85,9 +85,25 @@ gen_coords_to_pixel_map = do
   return (UI.convertCoordinateToPixelMapLocation coords)
 
 prop_total_map_within_bounds :: Property
-prop_total_map_within_bounds = forAll gen_coords_to_pixel_map is_within_bounds
+prop_total_map_within_bounds = forAll gen_coords_to_pixel_map isWithinBounds
 
 pixelMapLocationBounds :: Score -> TestTree
 pixelMapLocationBounds sc = testGroup "Result from convertCoordinateToPixelMapLocation is within map bounds"
     [ scoreProp sc ("prop_total_map_within_bounds", prop_total_map_within_bounds, 1)
     ]
+
+--------------------------------------------------------------------------------
+-- Helper functions
+--------------------------------------------------------------------------------
+
+unixTimeToLocalTests :: Score -> TestTree
+unixTimeToLocalTests sc = testGroup "unixTimeToLocal"
+  [ scoreTest ((\_ -> UI.unixTimeToLocal 0), (), "05:00 PM", 1, "test-1")
+  -- Note: all times are in PDT (not PST) so below is 10:47 and not 9:47
+  , scoreTest ((\_ -> UI.unixTimeToLocal 1639158447), (), "10:47 AM", 1, "test-2")
+  , scoreTest ((\_ -> UI.unixTimeToLocal 1023746521), (), "03:02 PM", 1, "test-3")
+  , scoreTest ((\_ -> UI.unixTimeToLocal 1653836400), (), "08:00 AM", 1, "test-4")
+  ]
+  where
+    scoreTest :: (Show b, Eq b) => (a -> b, a, b, Int, String) -> TestTree
+    scoreTest (f, x, r, n, msg) = scoreTest' sc (return . f, x, r, n, msg)
