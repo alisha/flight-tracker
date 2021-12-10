@@ -3,7 +3,8 @@ module UI
   ( ui,
   convertCoordinateToPixelMapLocation,
   showAirportCode,
-  unixTimeToLocal
+  unixTimeToLocal,
+  replaceCharAtIndex
   )
 where
 
@@ -212,7 +213,7 @@ convertCoordinateToMapLocation (lat, lon) = (x, y)
 
 -- replace a character at a particualr index
 replaceCharAtIndex :: Int -> Char -> String -> String
-replaceCharAtIndex index replacement str = strHead ++ [replacement] ++ drop 1 strAfter
+replaceCharAtIndex index replacement str = if index < (length str) then strHead ++ [replacement] ++ drop 1 strAfter else str
   where (strHead, strAfter) = splitAt index str
 
 drawResults :: AppState -> [Widget ResourceNames]

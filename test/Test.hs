@@ -116,3 +116,19 @@ unixTimeToLocalTests sc = testGroup "unixTimeToLocal"
   where
     scoreTest :: (Show b, Eq b) => (a -> b, a, b, Int, String) -> TestTree
     scoreTest (f, x, r, n, msg) = scoreTest' sc (return . f, x, r, n, msg)
+
+replaceCharAtIndexTests :: Score -> TestTree
+replaceCharAtIndexTests sc = testGroup "replaceCharAtIndex"
+  [ scoreTest ((\_ -> UI.replaceCharAtIndex 3 '!' "hello, world"), (), "hel!o, world", 1, "replaceCharAtIndex-1")
+  , scoreTest ((\_ -> UI.replaceCharAtIndex 3 'a' ""), (), "", 1, "replaceCharAtIndex-2")
+  ]
+  where
+    scoreTest :: (Show b, Eq b) => (a -> b, a, b, Int, String) -> TestTree
+    scoreTest (f, x, r, n, msg) = scoreTest' sc (return . f, x, r, n, msg)
+
+--------------------------------------------------------------------------------
+-- Parsing functions
+--------------------------------------------------------------------------------
+
+-- Sample waypoints for testing
+-- [1639014758,40.6984,-74.1648,0,25,false],[1639014765,40.7034,-74.1616,0,26,false]
