@@ -57,12 +57,15 @@ instance FromJSON Waypoint where
       _ -> fail "time must be number"
     lat <- case a ! 1 of
       Number b -> return $ Just (toRealFloat b)
+      Null -> return Nothing
       _ -> fail "latitude must be number"
     lon <- case a ! 2 of
       Number b -> return $ Just (toRealFloat b)
+      Null -> return Nothing
       _ -> fail "longitude must be number"
     baro_altitude <- case a ! 3 of
       Number b -> return $ Just (toRealFloat b)
+      Null -> return Nothing
       _ -> fail "baro altitude must be number"
     true_track <- case a ! 4 of
       Number b -> return $ Just (toRealFloat b)

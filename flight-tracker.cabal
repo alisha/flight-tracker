@@ -53,6 +53,7 @@ test-suite test
   Default-Extensions: OverloadedStrings
   main-is:          Test.hs
   build-depends:    base,
+                    aeson,
                     containers,
                     mtl,
                     filepath,
@@ -61,4 +62,5 @@ test-suite test
                     tasty-hunit,
                     tasty-quickcheck,
                     process,
+                    vector,
                     flight-tracker
