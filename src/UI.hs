@@ -1,6 +1,7 @@
 {-# LANGUAGE BlockArguments #-}
 module UI
   ( ui,
+  convertCoordinateToPixelMapLocation
   )
 where
 
