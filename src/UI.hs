@@ -109,8 +109,8 @@ showAirportCode = Data.Maybe.fromMaybe "????"
 
 unixTimeToLocal :: Int -> String
 unixTimeToLocal t = do
-  let time = utcToLocalTime (read "PDT") (posixSecondsToUTCTime (fromIntegral t))
-  formatTime defaultTimeLocale "%H:%M %p" time
+  let localtime = utcToLocalTime (read "PDT") (posixSecondsToUTCTime (fromIntegral t))
+  formatTime defaultTimeLocale "%I:%M %p" localtime
 
 instance Show AircraftTrackResponse where
   show f = "\
