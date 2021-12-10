@@ -277,11 +277,6 @@ app =
                 _ -> do
                     s' <- handleFormEvent ev s
                     continue s'
-
-                    -- Example of external validation:
-                    -- Require age field to contain a value that is at least 18.
-                    -- continue $ setFieldValid ((formState s')^.age >= 18) AgeField s'
-
         , appChooseCursor = focusRingCursor formFocus
         , appStartEvent = return
         , appAttrMap = const theMap
@@ -320,9 +315,6 @@ handleDeparturesEvent s e = do
   newDepartures <- L.handleListEvent e (s ^. brickDeparturesData)
   continue (s & (brickDeparturesData .~ newDepartures))
 
--- TODO: improve this
--- Can add focus case so that you only render flight info when in the arrivals/
--- departure windows
 resultsApp :: App AppState e ResourceNames
 resultsApp =
   App { appDraw = drawResults,
@@ -363,13 +355,10 @@ ui = do
   let now = round (toRational (utcTimeToPOSIXSeconds ct))
   let daySeconds = 60 * 60 * 24
   let hourSeconds = 60 * 60
-  -- let diffSecs = now `mod` daySeconds
-  -- putStrLn ("diffSecs " ++ show diffSecs)
   let beginTime = now - daySeconds
   let endTime = beginTime + (6 * hourSeconds)
-  -- need a default set of params
+  -- default set of params
   let defaultArrivals = ArrivalsInput { _airport = KSAN, _begin = beginTime, _end = endTime  }
-  -- idk....
   let buildVty = do
         v <- V.mkVty =<< V.standardIOConfig
         V.setMode (V.outputIface v) V.Mouse True
@@ -381,26 +370,12 @@ ui = do
 
   -- this is where the UI is run and rendered
   f' <- customMain initialVty buildVty Nothing app f
-
-  -- after exiting, we'll get to this part where we print the output of the app
-  -- putStrLn "The starting form state was:"
-  -- print defaultArrivals
-
-  -- print final form parameters and make the API request and print its response
-  -- putStrLn "The final form state was:"
   let params = formState f'
-  -- print $ params
-
 
   putStrLn "making arrivals request"
   arrivals <- makeArrivalsRequest (_airport params) (_begin params) (_end params)
   putStrLn "making departures request"
   departures <- makeDeparturesRequest (_airport params) (_begin params) (_end params)
-  -- let arrivals = dummyArrivals
-  -- let departures = dummyDepartures
-
-
-  -- let s = AircraftTrackResponse "icao 24 ???" 12345 6789 "the callsign" [Waypoint 0 (Just 40.7128) (Just 74.0060) (Just 1)  (Just 1) False]
 
   let appState = AppState {
     _focusRing = focusRing [Arrivals, Departures],
@@ -415,15 +390,3 @@ ui = do
   putStrLn "created initial vty"
   _ <- customMain initialVty buildVty Nothing resultsApp appState
   putStrLn "Thanks for playing!"
-
--- dummyArrivals :: [A.Arrival]
--- dummyArrivals = [
---   A.Arrival "test1" (Just "test1") (Just "test2") "other test",
---   A.Arrival "test2" (Just "test3") (Just "test4") "other test2"
---   ]
-
--- dummyDepartures :: [D.Departure ]
--- dummyDepartures = [
---   D.Departure "test1" 1 (Just "test1") 1 (Just "test2") "test1" (Nothing) (Nothing) (Nothing) (Nothing) (Nothing) (Nothing),
---   D.Departure "test2" 1 (Just "test2") 1 (Just "test3") "test4" Nothing Nothing Nothing Nothing Nothing Nothing
---   ]
