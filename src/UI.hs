@@ -2,6 +2,7 @@
 module UI
   ( ui,
   convertCoordinateToPixelMapLocation,
+  showAirportCode,
   unixTimeToLocal
   )
 where

@@ -96,6 +96,15 @@ pixelMapLocationBounds sc = testGroup "Result from convertCoordinateToPixelMapLo
 -- Helper functions
 --------------------------------------------------------------------------------
 
+showAirportCodeTests :: Score -> TestTree
+showAirportCodeTests sc = testGroup "showAirportCode"
+  [ scoreTest ((\_ -> UI.showAirportCode (Just "KSAN")), (), "KSAN", 1, "showAirportCode-1")
+  , scoreTest ((\_ -> UI.showAirportCode Nothing), (), "????", 1, "showAirportCode-2")
+  ]
+  where
+    scoreTest :: (Show b, Eq b) => (a -> b, a, b, Int, String) -> TestTree
+    scoreTest (f, x, r, n, msg) = scoreTest' sc (return . f, x, r, n, msg)
+
 unixTimeToLocalTests :: Score -> TestTree
 unixTimeToLocalTests sc = testGroup "unixTimeToLocal"
   [ scoreTest ((\_ -> UI.unixTimeToLocal 0), (), "05:00 PM", 1, "test-1")
